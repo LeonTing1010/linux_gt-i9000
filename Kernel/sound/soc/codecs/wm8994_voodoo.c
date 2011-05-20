@@ -122,6 +122,8 @@ static ssize_t name##_store(struct device *dev, struct device_attribute *attr, \
 	unsigned short state;						       \
 	if (sscanf(buf, "%hu", &state) == 1) {				       \
 		name = state == 0 ? false : true;			       \
+		if (debug_log(LOG_INFOS))				       \
+			printk("Voodoo sound: %s: %u\n", #updater, state);     \
 		updater(with_mute);					       \
 	}								       \
 	return size;							       \
@@ -723,6 +725,11 @@ void update_headphone_eq(bool with_mute)
 		// don't apply the EQ
 		return;
 	}
+
+	if (debug_log(LOG_INFOS))
+		printk("Voodoo sound: EQ gains (dB): %hd, %hd, %hd, %hd, %hd\n",
+		        eq_gains[0], eq_gains[1], eq_gains[2],
+		        eq_gains[3], eq_gains[4]);
 
 	gains_1 =
 	    ((eq_gains[0] + 12) << WM8994_AIF1DAC1_EQ_B1_GAIN_SHIFT) |
