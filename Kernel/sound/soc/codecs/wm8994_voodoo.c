@@ -490,7 +490,10 @@ bool is_path(int unified_path)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
 		return (wm8994->cur_path == HP
 			|| wm8994->cur_path == HP_NO_MIC
-			|| wm8994->fmradio_path == FMR_HP);
+#ifndef M110S
+			|| wm8994->fmradio_path == FMR_HP
+#endif
+			);
 #else
 		return (wm8994->cur_path == HP
 			|| wm8994->fmradio_path == FMR_HP);
@@ -1676,14 +1679,24 @@ unsigned int voodoo_hook_wm8994_write(struct snd_soc_codec *codec_,
 		printk("Voodoo sound: wm8994_write 0x%03X 0x%04X "
 		       "codec_state=%u, stream_state=%u, "
 		       "cur_path=%i, rec_path=%i, "
+#ifndef M110S
 		       "fmradio_path=%i, fmr_mix_path=%i, "
-		       "input_source=%i, output_source=%i, "
+#endif
+		       "input_source=%i, "
+#ifndef M110S
+		       "output_source=%i, "
+#endif
 		       "power_state=%i\n",
 		       reg, value,
 		       wm8994->codec_state, wm8994->stream_state,
+#ifndef M110S
 		       wm8994->fmradio_path, wm8994->fmr_mix_path,
+#endif
 		       wm8994->cur_path, wm8994->rec_path,
-		       wm8994->input_source, wm8994->output_source,
+		       wm8994->input_source,
+#ifndef M110S
+		       wm8994->output_source,
+#endif
 		       wm8994->power_state);
 #else
 		printk("Voodoo sound: wm8994_write 0x%03X 0x%04X "

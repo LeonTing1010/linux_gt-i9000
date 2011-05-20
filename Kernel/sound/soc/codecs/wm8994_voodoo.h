@@ -25,6 +25,10 @@
 #define M110S
 #endif
 
+#ifdef CONFIG_TDMB_T3700
+#define M110S
+#endif
+
 enum debug_log { LOG_OFF, LOG_INFOS, LOG_VERBOSE };
 bool debug_log(short unsigned int level);
 
