@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  */
 
-#define VOODOO_SOUND_VERSION 8
+#define VOODOO_SOUND_VERSION 9
 
 #if defined(CONFIG_MACH_HERRING) || defined (CONFIG_SAMSUNG_GALAXYS)	       \
 	|| defined (CONFIG_SAMSUNG_GALAXYSB)				       \
