@@ -43,7 +43,7 @@ void voodoo_hook_playback_speaker(void);
 void load_current_eq_values(void);
 void apply_saturation_prevention_drc(void);
 
-void update_hpvol(bool zero_cross);
+void update_hpvol(bool with_fade);
 void update_fm_radio_headset_restore_freqs(bool with_mute);
 void update_fm_radio_headset_normalize_gain(bool with_mute);
 void update_recording_preset(bool with_mute);

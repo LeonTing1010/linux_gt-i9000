@@ -54,8 +54,8 @@ bool bypass_write_hook = false;
 short unsigned int debug_log_level = LOG_OFF;
 
 #ifdef CONFIG_SND_VOODOO_HP_LEVEL_CONTROL
-unsigned short hplvol = CONFIG_SND_VOODOO_HP_LEVEL;
-unsigned short hprvol = CONFIG_SND_VOODOO_HP_LEVEL;
+unsigned short hp_level[2] = { CONFIG_SND_VOODOO_HP_LEVEL,
+			       CONFIG_SND_VOODOO_HP_LEVEL };;
 #endif
 
 #ifdef CONFIG_SND_VOODOO_FM
@@ -169,28 +169,47 @@ bool debug_log(short unsigned int level)
 #ifdef CONFIG_SND_VOODOO_HP_LEVEL_CONTROL
 int hpvol(int channel)
 {
-	int hpvol;
+	int vol;
 
-	if (channel == 0)
-		hpvol = hplvol;
-	else
-		hpvol = hprvol;
+	vol = hp_level[channel];
 
 	if (is_path_media_or_fm_no_call_no_record()) {
 		// negative digital gain compensation
 		if (digital_gain < 0)
-			hpvol = (hpvol - ((digital_gain / 100) + 5) / 10);
+			vol = (vol - ((digital_gain / 100) + 5) / 10);
 
-		if (hpvol > 62)
+		if (vol > 62)
 			return 62;
 	}
 
-	return hpvol;
+	return vol;
 }
 
-void update_hpvol(bool zero_cross)
+void write_hpvol(unsigned short l, unsigned short r)
 {
 	unsigned short val;
+
+	// we don't need the Volume Update flag when sending the first volume
+	val = (WM8994_HPOUT1L_MUTE_N | l);
+	val |= WM8994_HPOUT1L_ZC;
+	wm8994_write(codec, WM8994_LEFT_OUTPUT_VOLUME, val);
+
+	// this time we write the right volume plus the Volume Update flag.
+	// This way, both volume are set at the same time
+	val = (WM8994_HPOUT1_VU | WM8994_HPOUT1R_MUTE_N | r);
+	val |= WM8994_HPOUT1L_ZC;
+	wm8994_write(codec, WM8994_RIGHT_OUTPUT_VOLUME, val);
+}
+
+void update_hpvol(bool with_fade)
+{
+	unsigned short val;
+	unsigned short i;
+	short steps;
+	unsigned short hp_level_old[2];
+	unsigned short hp_level_registers[2] = { WM8994_LEFT_OUTPUT_VOLUME,
+						 WM8994_RIGHT_OUTPUT_VOLUME };
+
 	DECLARE_WM8994(codec);
 
 	// don't affect headphone amplifier volume
@@ -201,18 +220,50 @@ void update_hpvol(bool zero_cross)
 
 	bypass_write_hook = true;
 
-	// we don't need the Volume Update flag when sending the first volume
-	val = (WM8994_HPOUT1L_MUTE_N | hpvol(0));
-	if (zero_cross)
-		val |= WM8994_HPOUT1L_ZC;
-	wm8994_write(codec, WM8994_LEFT_OUTPUT_VOLUME, val);
+	if (!with_fade) {
+		write_hpvol(hpvol(0), hpvol(1));
+		bypass_write_hook = false;
+		return;
+	}
 
-	// this time we write the right volume plus the Volume Update flag.
-	// This way, both volume are set at the same time
-	val = (WM8994_HPOUT1_VU | WM8994_HPOUT1R_MUTE_N | hpvol(1));
-	if (zero_cross)
-		val |= WM8994_HPOUT1L_ZC;
-	wm8994_write(codec, WM8994_RIGHT_OUTPUT_VOLUME, val);
+	// read previous levels
+	for (i = 0; i < 2; i++) {
+		val = wm8994_read(codec, hp_level_registers[i]);
+		val &= ~(WM8994_HPOUT1_VU_MASK);
+		val &= ~(WM8994_HPOUT1L_ZC_MASK);
+		val &= ~(WM8994_HPOUT1L_MUTE_N_MASK);
+		hp_level_old[i] = val + (digital_gain / 1000);
+
+		if (debug_log(LOG_INFOS))
+			printk("Voodoo sound: previous hp_level[%hu]: %hu\n",
+				i, val);
+	}
+
+	// calculate number of steps for volume fade
+	steps = hp_level[0] - hp_level_old[0];
+	if (debug_log(LOG_INFOS))
+		printk("Voodoo sound: volume change steps: %hd "
+		       "start: %hu, end: %hu\n",
+		       steps,
+		       hp_level_old[0],
+		       hp_level[0]);
+
+	while (steps != 0) {
+		if (hp_level[0] < hp_level_old[0])
+			steps++;
+		else
+			steps--;
+
+		if (debug_log(LOG_INFOS))
+			printk("Voodoo sound: volume: %hu\n",
+			       (hpvol(0) - steps));
+
+		write_hpvol(hpvol(0) - steps, hpvol(1) - steps);
+
+		if (steps != 0)
+			udelay(1000);
+	}
+
 	bypass_write_hook = false;
 }
 #endif
@@ -884,7 +935,7 @@ static ssize_t headphone_amplifier_level_show(struct device *dev,
 					      char *buf)
 {
 	// output median of left and right headphone amplifier volumes
-	return sprintf(buf, "%u\n", (hplvol + hprvol) / 2);
+	return sprintf(buf, "%u\n", (hp_level[0] + hp_level[1]) / 2);
 }
 
 static ssize_t headphone_amplifier_level_store(struct device *dev,
@@ -893,13 +944,13 @@ static ssize_t headphone_amplifier_level_store(struct device *dev,
 {
 	unsigned short vol;
 	if (sscanf(buf, "%hu", &vol) == 1) {
-		// left and right are set to the same volumes
-		hplvol = hprvol = vol;
+
 		// hard limit to 62 because 63 introduces distortions
-		if (hplvol > 62)
-			hplvol = 62;
-		if (hprvol > 62)
-			hprvol = 62;
+		if (vol > 62)
+			vol = 62;
+
+		// left and right are set to the same volumes by this control
+		hp_level[0] = hp_level[1] = vol;
 
 		update_digital_gain(false);
 		update_hpvol(true);
@@ -994,7 +1045,7 @@ static ssize_t digital_gain_store(struct device *dev,
 				// reduce analog volume first
 				digital_gain = new_digital_gain;
 #ifdef CONFIG_SND_VOODOO_HP_LEVEL_CONTROL
-				update_hpvol(true);
+				update_hpvol(false);
 #endif
 				update_digital_gain(false);
 			} else {
@@ -1002,7 +1053,7 @@ static ssize_t digital_gain_store(struct device *dev,
 				digital_gain = new_digital_gain;
 				update_digital_gain(false);
 #ifdef CONFIG_SND_VOODOO_HP_LEVEL_CONTROL
-				update_hpvol(true);
+				update_hpvol(false);
 #endif
 			}
 		}
