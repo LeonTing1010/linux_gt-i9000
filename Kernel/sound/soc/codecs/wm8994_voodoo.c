@@ -455,7 +455,7 @@ bool is_path(int unified_path)
 	DECLARE_WM8994(codec);
 
 	switch (unified_path) {
-		// speaker
+	// speaker
 	case SPEAKER:
 #ifdef GALAXY_TAB
 		return (wm8994->cur_path == SPK
@@ -472,9 +472,7 @@ bool is_path(int unified_path)
 #endif
 #endif
 
-		// headphones
-		// FIXME: be sure dac_direct doesn't break phone calls on TAB
-		// with these spath detection settings (HP4P)
+	// headphones
 	case HEADPHONES:
 
 #ifdef NEXUS_S
@@ -501,7 +499,7 @@ bool is_path(int unified_path)
 #endif
 #endif
 
-		// FM Radio on headphones
+	// FM Radio on headphones
 	case RADIO_HEADPHONES:
 #ifdef NEXUS_S
 		return false;
@@ -519,12 +517,12 @@ bool is_path(int unified_path)
 #endif
 #endif
 
-		// headphones
-		// FIXME: be sure dac_direct doesn't break phone calls on TAB
-		// with these spath detection settings (HP4P)
+	// Standard recording presets
+	// for M110S Gingerbread: added check non call
 	case MAIN_MICROPHONE:
 		return (wm8994->codec_state & CAPTURE_ACTIVE)
-		    && (wm8994->rec_path == MAIN);
+		    && (wm8994->rec_path == MAIN)
+		    && !(wm8994->codec_state & CALL_ACTIVE);
 
 	}
 	return false;
