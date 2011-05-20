@@ -1691,25 +1691,36 @@ unsigned int voodoo_hook_wm8994_write(struct snd_soc_codec *codec_,
 		printk("Voodoo sound: wm8994_write 0x%03X 0x%04X "
 		       "codec_state=%u, stream_state=%u, "
 		       "cur_path=%i, rec_path=%i, "
+#ifndef M110S
 		       "fmradio_path=%i, fmr_mix_path=%i, "
+#endif
 #ifdef CONFIG_S5PC110_KEPLER_BOARD
 		       "call_record_path=%i, call_record_ch=%i, "
 		       "AUDIENCE_state=%i, "
 		       "Fac_SUB_MIC_state=%i, TTY_state=%i, "
 #endif
 		       "power_state=%i, "
-		       "recognition_active=%i, ringtone_active=%i\n",
+#ifndef M110S
+		       "recognition_active=%i, ringtone_active=%i"
+#endif
+		       "\n",
 		       reg, value,
 		       wm8994->codec_state, wm8994->stream_state,
 		       wm8994->cur_path, wm8994->rec_path,
+#ifndef M110S
 		       wm8994->fmradio_path, wm8994->fmr_mix_path,
+#endif
 #ifdef CONFIG_S5PC110_KEPLER_BOARD
 		       wm8994->call_record_path, wm8994->call_record_ch,
 		       wm8994->AUDIENCE_state,
 		       wm8994->Fac_SUB_MIC_state, wm8994->TTY_state,
 #endif
-		       wm8994->power_state,
-		       wm8994->recognition_active, wm8994->ringtone_active);
+		       wm8994->power_state
+#ifndef M110S
+		       ,wm8994->recognition_active,
+		       wm8994->ringtone_active
+#endif
+		       );
 #endif
 #endif
 	return value;
